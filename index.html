@@ -1,0 +1,222 @@
+<!doctype html>
+
+<html>
+
+<head>
+	<title> </title>
+	<style type="text/css">
+		.div-box {
+			display: flex;
+		}
+
+		.div-left {
+			width: 30%;
+		}
+
+		.div-right {
+			flex: 1;
+		}
+
+		.bg-blue {
+			background: blue
+		}
+
+		.bg-red {
+			background: red
+		}
+	</style>
+</head>
+
+<body>
+	<div id="app">
+	</div>
+
+	<script>
+		class Element {
+			constructor(type, props, children) {
+				this.type = type;
+				this.props = props;
+				this.children = children
+			}
+		}
+
+		function createElement(type, props, children) {
+			return new Element(type, props, children)
+		}
+		function createNode(node) {
+			let ele = document.createElement(node.type);
+			for (let key in node.props) {
+				if (key === 'value') {
+					if (node.type.toUpperCase() === 'INPUT' || node.type.toUpperCase() === 'TEXTAREA') {
+						ele.value = node.props[key]
+					}
+				} else {
+					ele.setAttribute(key, node.props[key])
+				}
+			}
+			return ele
+		}
+
+		function createDom(vDom) {
+			let rootNode = createNode(vDom);
+			if (vDom.children && vDom.children.length) {
+				vDom.children.map((item) => {
+					if (item instanceof Element) {
+						rootNode.appendChild(createDom(item))
+					} else {
+						rootNode.appendChild(document.createTextNode(item))
+					}
+				})
+			}
+			return rootNode
+		}
+
+		let vDom1 = createElement("div", {
+			class: "div"
+		}, [
+			createElement("div", {
+				class: "div1"
+			}, ["a"])
+		]);
+		let vDom2 = createElement("div", {
+			class: "div3"
+		}, [
+			createElement("div", {
+				class: "div4"
+			}, ["b"])
+		]);
+		console.log("旧Dom", vDom1)
+		console.log("新Dom", vDom2)
+		let DOODM = createDom(vDom1)
+
+		function renderDom(VDOM, root) {
+			root.appendChild(VDOM)
+		}
+		renderDom(DOODM, document.querySelector('#app'))			//生成节点到页面
+
+		const TEXT = 0; //文本  
+		const ATTR = 1; //属性
+		const REMOVE = 2; //删除
+		const REPLACE = 3; //替换
+		function diff(oldTree, newTree) {
+			let patches = {};
+			let index = 0;
+			
+			walk(oldTree, newTree, index)
+
+			function diffAttr(oldProps, newProps) {
+				let attr = {};
+				for (let key in oldProps) {
+					if (oldProps[key] !== newProps[key]) {
+						attr[key] = newProps[key]
+					}
+				}
+				for (let key in newProps) {
+					if (!oldProps.hasOwnProperty(key)) {
+						attr[key] = newProps[key]
+					}
+				}
+				return attr
+			}
+
+			function diffChildren(oldChildren, newChildren) {
+				oldChildren.forEach(function (child, i) {
+					walk(child, newChildren[i], ++index)
+				})
+			}
+
+			function walk(oldTree, newTree, index) {
+				let patch = [];
+				if (!newTree) {
+					patch.push({
+						type: REMOVE,
+						index
+					})
+				} else if (typeof oldTree === 'string' && typeof newTree === 'string') {
+					if (oldTree !== newTree) {
+						patch.push({
+							type: TEXT,
+							text: newTree
+						})
+					}
+				} else if (oldTree.type === newTree.type) {
+					let attr = diffAttr(oldTree.props, newTree.props);
+					if (JSON.stringify(attr) !== "{}") {
+						patch.push({
+							type: ATTR,
+							attr: attr
+						})
+					}
+					diffChildren(oldTree.children, newTree.children)
+				} else {
+					patch.push({
+						type: REPLACE,
+						newTree
+					})
+				}
+				if (patch.length > 0) {
+					patches[index] = patch;
+				}
+			}
+			return patches
+		}
+
+		function patch(DOM, patches) {
+			let patchIndex = 0;
+			walkPath(DOM, patches)
+
+			function walkPath(DOM, patches) {
+				//获取第一个节点的补丁
+				let patch = patches[patchIndex++];
+				//获取当前DOM的子节点
+				let children = DOM.childNodes;
+				//遍历子节点，打补丁
+				children && children.forEach((child) => walkPath(child, patches))
+				if (patch) {
+					doPath(DOM, patch)
+				}
+			}
+			function doPath(node, patch) {
+				patch.forEach((item) => {
+					switch (item.type) {
+						case TEXT:
+							node.textContent = item.text
+							break;
+						case ATTR:
+							for (let key in item.attr) {
+								let value = item.attr[key]
+								if (value) {
+									if (key === 'value') {
+										if (node.type.toUpperCase() === 'INPUT' || node.type.toUpperCase() ===
+											'TEXTAREA') {
+											node.value = value
+										}
+									} else {
+										node.setAttribute(key, value)
+									}
+								} else {
+									node.removeAttribute(key);
+								}
+							}
+							break;
+						case REMOVE:
+							node.parentNode.removeChild(node);
+							break;
+						case REPLACE:
+							let newTree = patch.newTree
+							newTree = (newTree instanceof Element) ? createDom(newTree) : document.createTextNode(
+								newTree);
+							newTree.parentNode.replaceChild(newTree)
+							break;
+						default:
+							break;
+					}
+				})
+			}
+		}
+		let patchs = diff(vDom1, vDom2)
+		patch(DOODM, patchs)
+	</script>
+</body>
+
+</html>
