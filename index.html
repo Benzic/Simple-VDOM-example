@@ -24,13 +24,18 @@
 		.bg-red {
 			background: red
 		}
+
+		.div4 {
+			color: red;
+		}
 	</style>
 </head>
 
 <body>
 	<div id="app">
 	</div>
-
+	<div id="diff">
+	</div>
 	<script>
 		class Element {
 			constructor(type, props, children) {
@@ -43,6 +48,7 @@
 		function createElement(type, props, children) {
 			return new Element(type, props, children)
 		}
+
 		function createNode(node) {
 			let ele = document.createElement(node.type);
 			for (let key in node.props) {
@@ -69,39 +75,88 @@
 				})
 			}
 			return rootNode
-		}
+		} 
+
+		
+		let VDOM = createElement("ul", {
+			class: "ul-box"
+		}, [createElement("li", {
+			class: "li-item"
+		}, [1]), createElement("li", {
+			class: "li-item",
+		}, [createElement("input", {
+				type: "radio",
+				value: "radio内容",
+			}, []),
+			createElement("input", {
+				type: "text",
+				value: "文本内容",
+				placeholder: "请输入文本"
+			}, [])
+		]), createElement("li", {
+			class: "li-item div-box",
+		}, [createElement("div", {
+			class: "div-left bg-blue",
+		}, ["文本内容"]), createElement("div", {
+			class: "div-right bg-red",
+		}, [createElement("div", {
+			class: "div-right-item",
+		}, ["文本内容"]), createElement("div", {
+			class: "div-right-item",
+		}, [createElement("a", {
+				class: "a",
+				href: "www.baidu.com"
+			}, [
+				createElement("span", {
+					class: "span"
+				}, ["这是一条文本"])
+			]),
+			createElement("img", {
+				class: "img",
+				src: "https://ss3.bdstatic.com/70cFv8Sh_Q1YnxGkpoWK1HF6hhy/it/u=2534506313,1688529724&fm=26&gp=0.jpg",
+				alt: "图片",
+				title: "虚拟DOM"
+			}, [])
+		])])])])
+
 
 		let vDom1 = createElement("div", {
 			class: "div"
 		}, [
 			createElement("div", {
 				class: "div1"
-			}, ["a"])
+			}, ["diff之前文本"])
 		]);
 		let vDom2 = createElement("div", {
 			class: "div3"
 		}, [
 			createElement("div", {
 				class: "div4"
-			}, ["b"])
+			}, ["diff之后文本"])
 		]);
 		console.log("旧Dom", vDom1)
 		console.log("新Dom", vDom2)
 		let DOODM = createDom(vDom1)
 
-		function renderDom(VDOM, root) {
-			root.appendChild(VDOM)
+		function renderDom(_VDOM, root) {
+			root.appendChild(_VDOM)
 		}
-		renderDom(DOODM, document.querySelector('#app'))			//生成节点到页面
+		renderDom(createDom(VDOM), document.querySelector('#app')) //生成节点到页面
+
+
+		renderDom(DOODM, document.querySelector('#diff')) //生成节点到页面
+
 
 		const TEXT = 0; //文本  
 		const ATTR = 1; //属性
 		const REMOVE = 2; //删除
 		const REPLACE = 3; //替换
+
+		//比较虚拟DOM区别
 		function diff(oldTree, newTree) {
 			let patches = {};
 			let index = 0;
-			
+
 			walk(oldTree, newTree, index)
 
 			function diffAttr(oldProps, newProps) {
@@ -160,7 +215,7 @@
 			}
 			return patches
 		}
-
+		//给真实DOM节点打补丁
 		function patch(DOM, patches) {
 			let patchIndex = 0;
 			walkPath(DOM, patches)
@@ -176,6 +231,7 @@
 					doPath(DOM, patch)
 				}
 			}
+
 			function doPath(node, patch) {
 				patch.forEach((item) => {
 					switch (item.type) {
@@ -215,7 +271,9 @@
 			}
 		}
 		let patchs = diff(vDom1, vDom2)
-		patch(DOODM, patchs)
+		setTimeout(() => {
+			patch(DOODM, patchs)
+		}, 1000);
 	</script>
 </body>
 
